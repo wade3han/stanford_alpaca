@@ -9,6 +9,40 @@ from train import ModelArguments, smart_tokenizer_and_embedding_resize, DEFAULT_
   DEFAULT_BOS_TOKEN, DEFAULT_UNK_TOKEN, PROMPT_DICT
 
 
+# SYSTEM_PROMPT = """You are a succinct and helpful assistant.
+#
+# Your job is to answer an action that is morally wrong given image caption, and give an explanation about the judgment. Then, you have to answer another image caption to make the action morally plausible, and give an explanation about the judgment again.
+#
+# For example,
+# If I give you a caption as "Caption: a statue on a river next to buildings and a water fountain", your answer should be:
+# Action: Throwing trash
+# Judgment: It's wrong
+# Explanation: The statue is a cultural heritage, and it is not okay to throw trash near it.
+#
+# Caption: a disposal can
+# Action: Throwing trash
+# Judgment: It's okay
+# Explanation: The disposal can is for throwing trash, and it is okay to throw trash near it.
+# ---
+# I gave the caption "a statue on a river next to buildings and a water fountain". Then, you are supposed to generate an action morally wrong, "Throwing trash".
+# Next, You have to generate a caption to make the action you generated action "Throwing trash" morally plausible.
+#
+# Requirements:
+# - You should use the exactly same action to answer.
+# - Do not change even one character of the action first you answered.
+# - Your answer should follow the given form of the example. Given the caption, you should generate action and judgment saying that is wrong, and caption, action, and judgment saying that is okay."""\
+#
+# USER_PROMPT = """Think carefully about the requirements.
+# Caption: {situation}
+# Action:
+# Judgment:
+# Explanation:"""
+
+SYSTEM_PROMPT = """Your job is to answer an action that is morally wrong given image caption, and give an explanation about the judgment. Then, you have to answer another image caption to make the action morally plausible, and give an explanation about the judgment again."""
+
+USER_PROMPT = """Think carefully about the requirements.
+Caption: {situation}"""
+
 @dataclass
 class InferenceArguments:
   model_max_length: int = field(
@@ -49,6 +83,8 @@ def inference():
     temperature=0.1,
     top_p=0.75,
     num_beams=4,
+    max_length=inference_args.model_max_length,
+    min_new_tokens=16,
   )
 
   tokenizer = transformers.AutoTokenizer.from_pretrained(
@@ -72,19 +108,15 @@ def inference():
   )
 
   ctx = ""
-  for instruction in [
-    "Tell me about alpacas.",
-    "Tell me about the president of Mexico in 2019.",
-    "Tell me about the king of France in 2019.",
-    "List all Canadian provinces in alphabetical order.",
-    "Write a Python program that prints the first 10 Fibonacci numbers.",
-    "Write a program that prints the numbers from 1 to 100. But for multiples of three print 'Fizz' instead of the number and for the multiples of five print 'Buzz'. For numbers which are multiples of both three and five print 'FizzBuzz'.",
-    "Tell me five words that rhyme with 'shock'.",
-    "Translate the sentence 'I have no mouth but I must scream' into Spanish.",
-    "Count up from 1 to 500.",
+  instruction = SYSTEM_PROMPT
+  for input in [
+    "a collage of people posing with a cake",
+    "mosaic of the crucifixion of jesus",
+    "a building with a clock on top of it",
   ]:
-    print("Instruction:", instruction)
-    inputs = tokenizer(generate_prompt(instruction, None), return_tensors="pt")
+    input = USER_PROMPT.format(situation=input)
+    inputs = tokenizer(generate_prompt(instruction, input), return_tensors="pt")
+    print(f"[INPUT]\n{input}")
     outputs = model.generate(input_ids=inputs["input_ids"].cuda(),
                              generation_config=generation_config,
                              max_new_tokens=inference_args.model_max_length,
@@ -102,7 +134,7 @@ def inference():
     #   # | token | token string | logits | probability
     #   print(f"| {tok:5d} | {tokenizer.decode(tok):8s} | {score.cpu().numpy():.3f} | {np.exp(score.cpu().numpy()):.2%}")
     ctx += f"Instruction: {instruction}\n" + f"Response: {generated_tokens[0]}\n"
-    print("Response:", tokenizer.decode(generated_tokens[0]))
+    print("[Response]\n", tokenizer.decode(generated_tokens[0]))
     print()
 
 
