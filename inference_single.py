@@ -113,6 +113,13 @@ def inference():
     "a collage of people posing with a cake",
     "mosaic of the crucifixion of jesus",
     "a building with a clock on top of it",
+    "a building that is being demolished",
+    "a man wearing a black t-shirt",
+    "a group of people standing in front of a banner",
+    "a black and white photo of an old barn",
+    "a wooden table next to a window",
+    "a boat with christmas lights in the water",
+    "a man wearing a camouflage uniform",
   ]:
     input = USER_PROMPT.format(situation=input)
     inputs = tokenizer(generate_prompt(instruction, input), return_tensors="pt")
